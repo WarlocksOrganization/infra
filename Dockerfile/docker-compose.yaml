@@ -1,0 +1,16 @@
+services:
+  game-socket-server:
+    build:
+      context: ./GameSocketServer
+      dockerfile: Dockerfile
+    ports:
+      - "8080:8080"
+    deploy:
+      replicas: 1
+  indicator-server:
+    build:
+      context: ./indicator
+      dockerfile: Dockerfile
+    ports:
+      - "8085:8080"
+      
