@@ -1,0 +1,55 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: logstash
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: logstash
+  template:
+    metadata:
+      labels:
+        app: logstash
+    spec:
+      containers:
+        - name: logstash
+          image: elastic/logstash:7.17.2
+          ports:
+            - name: logstash-tcp
+              containerPort: 5000
+          imagePullPolicy: IfNotPresent
+          envFrom:
+            - configMapRef:
+                name: elkusername
+            - configMapRef:
+                name: elkpassword
+          volumeMounts:
+            - name: config-volume
+              mountPath: /usr/share/logstash/config
+            - name: tz-seoul
+              mountPath: /etc/localtime
+            - name: logstash-logging-pipeline-volume
+              mountPath: /usr/share/logstash/pipeline/logging.conf
+              subPath: logging.conf
+
+      volumes:
+        - name: tz-seoul
+          hostPath:
+            path: /usr/share/zoneinfo/Asia/Seoul
+
+        - name: config-volume
+          configMap:
+            name: logstash-configmap
+            items:
+              - key: logstash.yml
+                path: logstash.yml
+              - key: pipelines.yml
+                path: pipelines.yml
+
+        - name: logstash-logging-pipeline-volume
+          configMap:
+            name: {{ .Values.configMap.logging.name }}
+            items:
+              - key: logging.conf
+                path: logging.conf

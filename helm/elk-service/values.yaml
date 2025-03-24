@@ -1,0 +1,6 @@
+replicaCount: 1
+protocol: TCP
+
+configMap:
+  logging:
+    name: logstash-logging-configmap

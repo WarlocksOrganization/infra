@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: logstash-configmap
+  labels:
+    task: logging
+    k8s-app: logstash
+data:
+  logstash.yml: |
+    http.host: "127.0.0.0"
+
+  pipelines.yml: |
+    - pipeline.id: logging
+      path.config: '/usr/share/logstash/pipeline/logging.conf'
