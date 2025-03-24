@@ -1,0 +1,14 @@
+image:
+  repository: rnrmf
+  name: smashup-logging-service
+  pullPolicy: IfNotPresent
+  tag: latest
+replicaCount: 1
+protocol: TCP
+service:
+  type: LoadBalancer
+  port: 8001
+namespace: logging
+container:
+  name: logging-service-container
+  port: 8001
