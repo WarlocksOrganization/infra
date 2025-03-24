@@ -2,7 +2,7 @@ image:
   repository: rnrmf
   name: smashup-logging-service
   pullPolicy: IfNotPresent
-  tag: latest
+  tag: 1
 replicaCount: 1
 protocol: TCP
 service:
