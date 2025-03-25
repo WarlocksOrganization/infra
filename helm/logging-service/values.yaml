@@ -6,6 +6,7 @@ image:
 replicaCount: 1
 protocol: TCP
 service:
+  type: NodePort
   port: 8001
 namespace: logging
 container:
