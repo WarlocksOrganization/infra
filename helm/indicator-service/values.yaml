@@ -2,7 +2,7 @@ image:
   repository: rnrmf
   name: smashup-indicator-service
   pullPolicy: IfNotPresent
-  tag: 5
+  tag: 6
 replicaCount: 1
 protocol: TCP
 service:
