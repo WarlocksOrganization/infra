@@ -1,0 +1,14 @@
+image:
+  repository: rnrmf
+  name: smashup-gateway-service
+  pullPolicy: IfNotPresent
+  tag: latest
+replicaCount: 1
+protocol: TCP
+service:
+  type: LoadBalancer
+  port: 8080
+namespace: gateway
+container:
+  name: gateway-service-container
+  port: 8080
