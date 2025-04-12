@@ -42,8 +42,6 @@ data:
 
         ruby {
           code => '
-            require "logstash/timestamp"
-
             rounds = ["round1", "round2", "round3"]
             player = event.get("playerLog")
             scores = player["roundScore"]
