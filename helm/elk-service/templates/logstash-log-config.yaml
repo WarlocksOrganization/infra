@@ -15,69 +15,60 @@ data:
         decorate_events => true
       }
     }
+
     filter {
-          json {
-            source => "message"
-            target => "parsed"
-            remove_field => ["message"]
-        }
+      json {
+        source => "message"
+        target => "parsed"
+        remove_field => ["message"]
+      }
 
-          mutate {
-          add_field => {
-          "eventType"   => "%{[parsed][eventType]}"
-          "createdAt"   => "%{[parsed][createdAt]}"
-          "patchVersion" => "%{[parsed][patchVersion]}"
-          "gameId"      => "%{[parsed][gameId]}"
-          "mapId"       => "%{[parsed][mapId]}"
-          "playerCount" => "%{[parsed][playerCount]}"
-          }
-        }
-
-          if [parsed][eventType] == "gameEnd" {
-
-          split {
-          field => "[parsed][playerLogs]"
-          target => "playerLog"
-          }
-
-          ruby {
-          code => '
-          player = event.get("playerLog")
-          rounds = ["round1", "round2", "round3"]
-          scores = player["roundScore"]
-          ranks = player["roundRank"]
-          sets = [player["round1Set"], player["round2Set"], player["round3Set"]]
-
-          rounds.each_with_index do |round, i|
-          event.clone.tap do |e|
-          e.set("eventType", "classDataV2")
-          e.set("round", round)
-          e.set("score", scores[i])
-          e.set("rank", ranks[i])
-          e.set("class", player["classCode"])
-          e.set("userId", player["userId"])
-          e.set("cardSet", sets[i])
-          e.remove("playerLog")
-          e.remove("parsed")
-          e.remove("message")
-          e.remove("tags")
-          e.remove("@version")
-          e.remove("host")
-          e.remove("agent")
-          e.remove("ecs")
-          e.remove("input")
-          e.remove("log")
-          e.remove("data_stream")
-          e.remove("type")
-          e.set("@timestamp", Time.now.utc.iso8601)
-          e.cancel
-          end
-          end
-          '
-          }
+      mutate {
+        add_field => {
+          "eventType"     => "%{[parsed][eventType]}"
+          "createdAt"     => "%{[parsed][createdAt]}"
+          "patchVersion"  => "%{[parsed][patchVersion]}"
+          "gameId"        => "%{[parsed][gameId]}"
+          "mapId"         => "%{[parsed][mapId]}"
+          "playerCount"   => "%{[parsed][playerCount]}"
         }
       }
 
+      if [parsed][eventType] == "gameEnd" {
+        split {
+          field => "[parsed][playerLogs]"
+          target => "playerLog"
+        }
+
+        ruby {
+          code => '
+            rounds = ["round1", "round2", "round3"]
+            player = event.get("playerLog")
+            scores = player["roundScore"]
+            ranks  = player["roundRank"]
+            sets   = [player["round1Set"], player["round2Set"], player["round3Set"]]
+
+            if scores && ranks && sets
+              rounds.each_with_index do |round, i|
+                new_event = event.clone
+                new_event.set("eventType", "classDataV2")
+                new_event.set("round", round)
+                new_event.set("score", scores[i])
+                new_event.set("rank", ranks[i])
+                new_event.set("class", player["classCode"])
+                new_event.set("userId", player["userId"])
+                new_event.set("cardSet", sets[i])
+                new_event.remove("playerLog")
+                new_event.remove("parsed")
+                new_event.set("@timestamp", Time.now.utc.iso8601)
+                event.cancel
+                new_event
+              end
+            end
+          '
+        }
+      }
+    }
 
     output {
       elasticsearch {
