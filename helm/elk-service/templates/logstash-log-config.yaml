@@ -24,13 +24,13 @@ data:
       }
 
       mutate {
-        add_field => {
-          "eventType"     => "%{[parsed][eventType]}"
-          "createdAt"     => "%{[parsed][createdAt]}"
-          "patchVersion"  => "%{[parsed][patchVersion]}"
-          "gameId"        => "%{[parsed][gameId]}"
-          "mapId"         => "%{[parsed][mapId]}"
-          "playerCount"   => "%{[parsed][playerCount]}"
+        copy => {
+          "[parsed][eventType]"    => "eventType"
+          "[parsed][createdAt]"    => "createdAt"
+          "[parsed][patchVersion]" => "patchVersion"
+          "[parsed][gameId]"       => "gameId"
+          "[parsed][mapId]"        => "mapId"
+          "[parsed][playerCount]"  => "playerCount"
         }
       }
 
@@ -42,6 +42,8 @@ data:
 
         ruby {
           code => '
+            require 'logstash/timestamp'
+
             rounds = ["round1", "round2", "round3"]
             player = event.get("playerLog")
             scores = player["roundScore"]
@@ -60,7 +62,7 @@ data:
                 new_event.set("cardSet", sets[i])
                 new_event.remove("playerLog")
                 new_event.remove("parsed")
-                new_event.set("@timestamp", Time.now.utc.iso8601)
+                new_event.set("@timestamp", LogStash::Timestamp.new(Time.now.utc))
                 event.cancel
                 new_event
               end
