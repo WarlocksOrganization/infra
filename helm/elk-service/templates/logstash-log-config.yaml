@@ -61,9 +61,9 @@ data:
                   "eventType" => "classDataV2",
                   "round" => round,
                   "score" => scores[i],
-                  "rank"  => ranks[i],
-                  "class" => player["classCode"],
-                  "userId" => player["userId"],
+                  "rank"  => ranks[i].to_s,
+                  "class" => player["classCode"].to_s,
+                  "userId" => player["userId"].to_s,
                   "cardSet" => sets[i],
                   "@timestamp" => LogStash::Timestamp.new(Time.now.utc)
                 }
