@@ -17,86 +17,102 @@ data:
     }
 
     filter {
-      json {
-        source => "message"
-        target => "parsed"
-        remove_field => ["message"]
+      clone {
+        clones => ["raw_log"]
       }
 
-      mutate {
-        copy => {
-          "[parsed][eventType]"    => "eventType"
-          "[parsed][createdAt]"    => "createdAt"
-          "[parsed][patchVersion]" => "patchVersion"
-          "[parsed][gameId]"       => "gameId"
-          "[parsed][mapId]"        => "mapId"
-          "[parsed][playerCount]"  => "playerCount"
-        }
-        convert => {
-          "mapId"       => "integer"
-          "gameId"      => "integer"
-          "playerCount" => "integer"
-        }
-      }
-
-      if [parsed][eventType] == "gameEnd" {
-        split {
-          field => "[parsed][playerLogs]"
-          target => "playerLog"
-        }
-
-        ruby {
-          code => '
-            require "logstash/timestamp"
-            player = event.get("playerLog")
-            rounds = ["round1", "round2", "round3"]
-            scores = player["roundScore"]
-            ranks  = player["roundRank"]
-            sets   = [player["round1Set"], player["round2Set"], player["round3Set"]]
-
-            if scores && ranks && sets
-              round_docs = []
-              rounds.each_with_index do |round, i|
-                round_docs << {
-                  "eventType" => "classDataV2",
-                  "round" => round,
-                  "score" => scores[i],
-                  "rank"  => ranks[i].to_s,
-                  "class" => player["classCode"].to_s,
-                  "userId" => player["userId"].to_s,
-                  "cardSet" => sets[i],
-                  "@timestamp" => LogStash::Timestamp.new(Time.now.utc)
-                }
-              end
-              event.set("roundDocs", round_docs)
-            end
-          '
-        }
-
-        split {
-          field => "roundDocs"
+      if "raw_log" not in [tags] {
+        json {
+          source => "message"
+          target => "parsed"
+          remove_field => ["message"]
         }
 
         mutate {
-          rename => { "[roundDocs][score]" => "score" }
-          rename => { "[roundDocs][rank]" => "rank" }
-          rename => { "[roundDocs][round]" => "round" }
-          rename => { "[roundDocs][class]" => "class" }
-          rename => { "[roundDocs][userId]" => "userId" }
-          rename => { "[roundDocs][cardSet]" => "cardSet" }
-          rename => { "[roundDocs][eventType]" => "eventType" }
+          copy => {
+            "[parsed][eventType]"    => "eventType"
+            "[parsed][createdAt]"    => "createdAt"
+            "[parsed][patchVersion]" => "patchVersion"
+            "[parsed][gameId]"       => "gameId"
+            "[parsed][mapId]"        => "mapId"
+            "[parsed][playerCount]"  => "playerCount"
+          }
+          convert => {
+            "mapId"       => "integer"
+            "gameId"      => "integer"
+            "playerCount" => "integer"
+          }
+        }
+
+        if [parsed][eventType] == "gameEnd" {
+          split {
+            field => "[parsed][playerLogs]"
+            target => "playerLog"
+          }
+
+          ruby {
+            code => '
+              require "logstash/timestamp"
+              player = event.get("playerLog")
+              rounds = ["round1", "round2", "round3"]
+              scores = player["roundScore"]
+              ranks  = player["roundRank"]
+              sets   = [player["round1Set"], player["round2Set"], player["round3Set"]]
+
+              if scores && ranks && sets
+                round_docs = []
+                rounds.each_with_index do |round, i|
+                  round_docs << {
+                    "eventType" => "classDataV2",
+                    "round" => round,
+                    "score" => scores[i],
+                    "rank"  => ranks[i].to_s,
+                    "class" => player["classCode"].to_s,
+                    "userId" => player["userId"].to_s,
+                    "cardSet" => sets[i],
+                    "@timestamp" => LogStash::Timestamp.new(Time.now.utc)
+                  }
+                end
+                event.set("roundDocs", round_docs)
+              end
+            '
+          }
+
+          split {
+            field => "roundDocs"
+          }
+
+          mutate {
+            rename => { "[roundDocs][score]" => "score" }
+            rename => { "[roundDocs][rank]" => "rank" }
+            rename => { "[roundDocs][round]" => "round" }
+            rename => { "[roundDocs][class]" => "class" }
+            rename => { "[roundDocs][userId]" => "userId" }
+            rename => { "[roundDocs][cardSet]" => "cardSet" }
+            rename => { "[roundDocs][eventType]" => "eventType" }
+          }
         }
       }
     }
 
     output {
-      stdout { codec => rubydebug }
+      if "raw_log" in [tags] {
+        elasticsearch {
+          hosts => ["elasticsearch:9200"]
+          user => "${ELASTIC_USERNAME}"
+          password => "${ELASTIC_PASSWORD}"
+          index => "logs-raw-%{+YYYY.MM.dd}"
+          action => "create"
+        }
+      } else {
+        stdout { codec => rubydebug }
 
-      elasticsearch {
-        hosts => ["elasticsearch:9200"]
-        user => "${ELASTIC_USERNAME}"
-        password => "${ELASTIC_PASSWORD}"
-        index => "logs-order-%{+YYYY.MM.dd}"
-        action => "create"
+        elasticsearch {
+          hosts => ["elasticsearch:9200"]
+          user => "${ELASTIC_USERNAME}"
+          password => "${ELASTIC_PASSWORD}"
+          index => "logs-order-%{+YYYY.MM.dd}"
+          action => "create"
+        }
       }
     }
