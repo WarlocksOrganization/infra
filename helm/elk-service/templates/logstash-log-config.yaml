@@ -25,14 +25,13 @@ data:
           add_tag => ["raw_log"]
         }
       }
-      if "row_log" not in [tags] {
+      if "raw_log" in [tags] {
         json {
           source => "message"
         }
 
         mutate {
           rename => { "timestamp" => "log_timestamp" }
-          remove_field => ["message"]
         }
 
         date {
@@ -42,7 +41,7 @@ data:
         }
       }
 
-      if "raw_log" in [tags] {
+      if "raw_log" not in [tags] {
         json {
           source => "message"
           target => "parsed"
