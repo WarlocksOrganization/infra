@@ -15,58 +15,69 @@ data:
         decorate_events => true
       }
     }
-
     filter {
-      json {
-        source => "message"
-      }
+          json {
+            source => "message"
+            target => "parsed"
+            remove_field => ["message"]
+        }
 
-      mutate {
-        rename => { "timestamp" => "log_timestamp" }
-
-        add_field => {
+          mutate {
+          add_field => {
           "eventType"   => "%{[parsed][eventType]}"
           "createdAt"   => "%{[parsed][createdAt]}"
           "patchVersion" => "%{[parsed][patchVersion]}"
           "gameId"      => "%{[parsed][gameId]}"
           "mapId"       => "%{[parsed][mapId]}"
           "playerCount" => "%{[parsed][playerCount]}"
-        }
-      }
-      if [parsed][eventType] == "gameEnd" {
-        clone {
-          clones => ["player_logs_clone"]
+          }
         }
 
-        if "_grokparsefailure" not in [tags] {
-          if [type] == "player_logs_clone" {
-            mutate {
-              add_field => { "[@metadata][original_event]" => "%{eventType}" }
-            }
-            split {
-              field => "[parsed][playerLogs]"
-              target => "playerLog"
-            }
-            mutate {
-              add_field => {
-                "eventType" => "classDataV2"
-                "userId"    => "%{[playerLog][userId]}"
-                "score"     => "%{[playerLog][roundScore][0]}" # 예: round1 점수
-                "rank"      => "%{[playerLog][roundRank][0]}"  # 예: round1 랭크
-                "round"     => "round1"
-                "class"     => "%{[playerLog][classCode]}"
-              }
-              remove_field => ["parsed"]
-            }
+          if [parsed][eventType] == "gameEnd" {
+
+          split {
+          field => "[parsed][playerLogs]"
+          target => "playerLog"
+          }
+
+          ruby {
+          code => '
+          player = event.get("playerLog")
+          rounds = ["round1", "round2", "round3"]
+          scores = player["roundScore"]
+          ranks = player["roundRank"]
+          sets = [player["round1Set"], player["round2Set"], player["round3Set"]]
+
+          rounds.each_with_index do |round, i|
+          event.clone.tap do |e|
+          e.set("eventType", "classDataV2")
+          e.set("round", round)
+          e.set("score", scores[i])
+          e.set("rank", ranks[i])
+          e.set("class", player["classCode"])
+          e.set("userId", player["userId"])
+          e.set("cardSet", sets[i])
+          e.remove("playerLog")
+          e.remove("parsed")
+          e.remove("message")
+          e.remove("tags")
+          e.remove("@version")
+          e.remove("host")
+          e.remove("agent")
+          e.remove("ecs")
+          e.remove("input")
+          e.remove("log")
+          e.remove("data_stream")
+          e.remove("type")
+          e.set("@timestamp", Time.now.utc.iso8601)
+          e.cancel
+          end
+          end
+          '
           }
         }
       }
-      date {
-        match => ["log_timestamp", "ISO8601"]
-        target => "@timestamp"
-        remove_field => ["log_timestamp"]
-      }
-    }
+
 
     output {
       elasticsearch {
