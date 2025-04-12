@@ -55,112 +55,36 @@ data:
             sets   = [player["round1Set"], player["round2Set"], player["round3Set"]]
 
             if scores && ranks && sets
+              round_docs = []
               rounds.each_with_index do |round, i|
-                e = event.clone
-                e.set("eventType", "classDataV2")
-                e.set("round", round)
-                e.set("score", scores[i])
-                e.set("rank", ranks[i])
-                e.set("class", player["classCode"])
-                e.set("userId", player["userId"])
-                e.set("cardSet", sets[i])
-                e.set("@timestamp", LogStash::Timestamp.new(Time.now.utc))
-                e.remove("playerLog")
-                e.remove("parsed")
-                yield e
+                round_docs << {
+                  "eventType" => "classDataV2",
+                  "round" => round,
+                  "score" => scores[i],
+                  "rank"  => ranks[i],
+                  "class" => player["classCode"],
+                  "userId" => player["userId"],
+                  "cardSet" => sets[i],
+                  "@timestamp" => LogStash::Timestamp.new(Time.now.utc)
+                }
               end
-              event.cancel
+              event.set("roundDocs", round_docs)
             end
           '
         }
-      }
-    }
 
-    output {
-      stdout { codec => rubydebug }
-
-      elasticsearch {
-        hosts => ["elasticsearch:9200"]
-        user => "${ELASTIC_USERNAME}"
-        password => "${ELASTIC_PASSWORD}"
-        index => "logs-order-%{+YYYY.MM.dd}"
-        action => "create"
-      }
-    }
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: {{ .Values.configMap.logging.name }}
-  labels:
-    task: logging
-    k8s-app: logstash
-data:
-  logging.conf: |
-    input {
-      kafka {
-        bootstrap_servers => "kraft-cluster-kafka-bootstrap.kafka.svc.cluster.local:9092"
-        topics => ["logging"]
-        consumer_threads => 1
-        decorate_events => true
-      }
-    }
-
-    filter {
-      json {
-        source => "message"
-        target => "parsed"
-        remove_field => ["message"]
-      }
-
-      mutate {
-        copy => {
-          "[parsed][eventType]"    => "eventType"
-          "[parsed][createdAt]"    => "createdAt"
-          "[parsed][patchVersion]" => "patchVersion"
-          "[parsed][gameId]"       => "gameId"
-          "[parsed][mapId]"        => "mapId"
-          "[parsed][playerCount]"  => "playerCount"
-        }
-        convert => {
-          "mapId"       => "integer"
-          "gameId"      => "integer"
-          "playerCount" => "integer"
-        }
-      }
-
-      if [parsed][eventType] == "gameEnd" {
         split {
-          field => "[parsed][playerLogs]"
-          target => "playerLog"
+          field => "roundDocs"
         }
 
-        ruby {
-          code => '
-            require "logstash/timestamp"
-            player = event.get("playerLog")
-            rounds = ["round1", "round2", "round3"]
-            scores = player["roundScore"]
-            ranks  = player["roundRank"]
-            sets   = [player["round1Set"], player["round2Set"], player["round3Set"]]
-
-            if scores && ranks && sets
-              rounds.each_with_index do |round, i|
-                e = event.clone
-                e.set("eventType", "classDataV2")
-                e.set("round", round)
-                e.set("score", scores[i])
-                e.set("rank", ranks[i])
-                e.set("class", player["classCode"])
-                e.set("userId", player["userId"])
-                e.set("cardSet", sets[i])
-                e.set("@timestamp", LogStash::Timestamp.new(Time.now.utc))
-                e.remove("playerLog")
-                e.remove("parsed")
-                yield e
-              end
-              event.cancel
-            end
-          '
+        mutate {
+          rename => { "[roundDocs][score]" => "score" }
+          rename => { "[roundDocs][rank]" => "rank" }
+          rename => { "[roundDocs][round]" => "round" }
+          rename => { "[roundDocs][class]" => "class" }
+          rename => { "[roundDocs][userId]" => "userId" }
+          rename => { "[roundDocs][cardSet]" => "cardSet" }
+          rename => { "[roundDocs][eventType]" => "eventType" }
         }
       }
     }
