@@ -19,6 +19,7 @@ data:
     filter {
       clone {
         clones => ["raw_log"]
+        add_tag => ["raw_log"]
       }
 
       if "raw_log" not in [tags] {
@@ -111,7 +112,7 @@ data:
           hosts => ["elasticsearch:9200"]
           user => "${ELASTIC_USERNAME}"
           password => "${ELASTIC_PASSWORD}"
-          index => "logs-order-%{+YYYY.MM.dd}"
+          index => "logs-classData-%{+YYYY.MM.dd}"
           action => "create"
         }
       }
