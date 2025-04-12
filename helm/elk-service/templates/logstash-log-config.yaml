@@ -19,9 +19,12 @@ data:
     filter {
       clone {
         clones => ["raw_log"]
-        add_tag => ["raw_log"]
       }
-
+      if [type] == "raw_log" {
+        mutate {
+          add_tag => ["raw_log"]
+        }
+      }
       if "raw_log" not in [tags] {
         json {
           source => "message"
