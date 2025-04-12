@@ -34,7 +34,7 @@ data:
         }
       }
 
-      if [parsed][eventType] == "gameEnd" {
+      if [parsed][eventType] == "gameEnd2" {
         split {
           field => "[parsed][playerLogs]"
           target => "playerLog"
@@ -51,7 +51,7 @@ data:
             if scores && ranks && sets
               rounds.each_with_index do |round, i|
                 new_event = event.clone
-                new_event.set("eventType", "classDataV2")
+                new_event.set("eventType", "classDataV3")
                 new_event.set("round", round)
                 new_event.set("score", scores[i])
                 new_event.set("rank", ranks[i])
