@@ -1,0 +1,77 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ .Release.Name }}-gameserver
+  labels:
+    app: {{ .Chart.Name }}
+    release: {{ .Release.Name }}
+spec:
+  serviceName: {{ .Release.Name }}-headless
+  replicas: {{ .Values.replicaCount }}
+  podManagementPolicy: OrderedReady
+  selector:
+    matchLabels:
+      app: {{ .Chart.Name }}
+      release: {{ .Release.Name }}
+  template:
+    metadata:
+      labels:
+        app: {{ .Chart.Name }}
+        release: {{ .Release.Name }}
+    spec:
+      hostNetwork: true
+      dnsPolicy: ClusterFirstWithHostNet
+      terminationGracePeriodSeconds: 10
+      containers:
+        - name: smashup-server
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          securityContext:
+            runAsUser: 0
+          env:
+            - name: port
+              value: "{{ .Values.basePort }}"
+            - name: SOCKET_SERVER_IP
+              value: "{{ .Values.socketServerIP }}"
+            - name: SOCKET_SERVER_PORT
+              value: "{{ .Values.socketServerPort }}"
+            - name: LOG_SERVER_IP
+              value: "{{ .Values.logServerIP }}"
+            - name: LOG_SERVER_PORT
+              value: "{{ .Values.logServerPort }}"
+            - name: POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+          volumeMounts:
+            - name: data
+              mountPath: {{ .Values.volume.mountPath }}
+          command: ["/bin/sh", "-c"]
+          args:
+            - |
+              ordinal=${POD_NAME##*-};
+              port=$(expr {{ .Values.basePort }} + $ordinal);
+              echo "current port : $port";
+              pid=$(pgrep -f entrypoint.sh)
+
+              if [ -n "$pid" ]; then
+                echo "kill process: $pid"
+                kill $pid
+                sleep 1
+              fi
+
+              exec /app/entrypoint.sh  \
+                -port=$port \
+                -socketServerIP=${SOCKET_SERVER_IP} -socketServerPort=${SOCKET_SERVER_PORT} \
+                -logServerIP=${LOG_SERVER_IP} -logServerPort=${LOG_SERVER_PORT}
+          resources:
+            {{- toYaml .Values.resources | nindent 10 }}
+      volumes: []
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        accessModes: [ "ReadWriteOnce" ]
+        resources:
+          requests:
+            storage: {{ .Values.volume.size }}

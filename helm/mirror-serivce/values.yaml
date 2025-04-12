@@ -1,0 +1,26 @@
+replicaCount: 7
+
+image:
+  repository: "rnrmf/smashup-mirror-service"
+  tag: "1"
+  pullPolicy: IfNotPresent
+
+basePort: 40000
+hostNetwork: true
+socketServerIP: "smashup-matching-service.matching.svc.cluster.local"
+socketServerPort: 8080
+logServerIP: "smashup-logging-service.logging.svc.cluster.local"
+logServerPort: 8001
+
+volume:
+  mountPath: "/data"
+  size: 2Gi
+
+resources:
+  limits:
+    cpu: 200m
+    memory: 256Mi
+  requests:
+    cpu: 100m
+    memory: 128Mi
+
