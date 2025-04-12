@@ -115,7 +115,7 @@ data:
           hosts => ["elasticsearch:9200"]
           user => "${ELASTIC_USERNAME}"
           password => "${ELASTIC_PASSWORD}"
-          index => "logs-classData-%{+YYYY.MM.dd}"
+          index => "logs-classdata-%{+YYYY.MM.dd}"
           action => "create"
         }
       }
