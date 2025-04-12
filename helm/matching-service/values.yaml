@@ -1,0 +1,40 @@
+replicaCount: 1
+
+image:
+  repository: rnrmf/smashup-matching-service
+  tag: "1"
+  pullPolicy: IfNotPresent
+
+server:
+  port: 8080
+  version: "1.2.0"
+
+resources:
+  requests:
+    memory: 128Mi
+    cpu: 100m
+  limits:
+    memory: 256Mi
+    cpu: 500m
+
+service:
+  type: LoadBalancer
+  port: 8080
+  nodePort: null
+
+postgresql:
+  auth:
+    username: admin
+    password: admin
+    database: matchingdb
+  primary:
+    resources:
+      requests:
+        memory: "256Mi"
+        cpu: "100m"
+      limits:
+        memory: "512Mi"
+        cpu: "500m"
+    persistence:
+      enabled: true
+      size: 1Gi
