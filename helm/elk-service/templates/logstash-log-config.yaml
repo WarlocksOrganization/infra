@@ -25,6 +25,24 @@ data:
           add_tag => ["raw_log"]
         }
       }
+      if "row_log" in [tags] {
+        filter {
+          json {
+            source => "message"
+          }
+
+          mutate {
+            rename => { "timestamp" => "log_timestamp" }
+          }
+
+          date {
+            match => ["log_timestamp", "ISO8601"]
+            target => "@timestamp"
+            remove_field => ["log_timestamp"]
+          }
+        }
+      }
+
       if "raw_log" not in [tags] {
         json {
           source => "message"
@@ -109,8 +127,6 @@ data:
           action => "create"
         }
       } else {
-        stdout { codec => rubydebug }
-
         elasticsearch {
           hosts => ["elasticsearch:9200"]
           user => "${ELASTIC_USERNAME}"
