@@ -23,8 +23,44 @@ data:
 
       mutate {
         rename => { "timestamp" => "log_timestamp" }
-      }
 
+        add_field => {
+          "eventType"   => "%{[parsed][eventType]}"
+          "createdAt"   => "%{[parsed][createdAt]}"
+          "patchVersion" => "%{[parsed][patchVersion]}"
+          "gameId"      => "%{[parsed][gameId]}"
+          "mapId"       => "%{[parsed][mapId]}"
+          "playerCount" => "%{[parsed][playerCount]}"
+        }
+      }
+      if [parsed][eventType] == "gameEnd" {
+        clone {
+          clones => ["player_logs_clone"]
+        }
+
+        if "_grokparsefailure" not in [tags] {
+          if [type] == "player_logs_clone" {
+            mutate {
+              add_field => { "[@metadata][original_event]" => "%{eventType}" }
+            }
+            split {
+              field => "[parsed][playerLogs]"
+              target => "playerLog"
+            }
+            mutate {
+              add_field => {
+                "eventType" => "classDataV2"
+                "userId"    => "%{[playerLog][userId]}"
+                "score"     => "%{[playerLog][roundScore][0]}" # 예: round1 점수
+                "rank"      => "%{[playerLog][roundRank][0]}"  # 예: round1 랭크
+                "round"     => "round1"
+                "class"     => "%{[playerLog][classCode]}"
+              }
+              remove_field => ["parsed"]
+            }
+          }
+        }
+      }
       date {
         match => ["log_timestamp", "ISO8601"]
         target => "@timestamp"
