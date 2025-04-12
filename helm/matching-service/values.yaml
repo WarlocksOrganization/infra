@@ -30,11 +30,11 @@ postgresql:
   primary:
     resources:
       requests:
-        memory: "256Mi"
-        cpu: "100m"
+        memory: 128Mi
+        cpu: 100m
       limits:
-        memory: "512Mi"
-        cpu: "500m"
+        memory: 512Mi
+        cpu: 500m
     persistence:
       enabled: true
       size: 1Gi
