@@ -124,7 +124,7 @@ data:
           index => "logs-raw-%{+YYYY.MM.dd}"
           action => "create"
         }
-      } else {
+      } else if [parsed][eventType] == "gameEnd"{
         elasticsearch {
           hosts => ["elasticsearch:9200"]
           user => "${ELASTIC_USERNAME}"
