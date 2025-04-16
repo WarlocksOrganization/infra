@@ -2,7 +2,7 @@ replicaCount: 5
 
 image:
   repository: "rnrmf/smashup-mirror-service"
-  tag: "1"
+  tag: "1.3.0"
   pullPolicy: IfNotPresent
 
 basePort: 40000
